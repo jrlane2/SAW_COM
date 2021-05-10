@@ -1,5 +1,5 @@
 import numpy as np
-
+import scipy.optimize as op
 '''
 Solutions to Coupling of modes equations as P-matrix elements
 Reproduced from "Surface Acoustic Wave Filters" by David Morgan, 2nd edition
@@ -101,5 +101,28 @@ def concat(pl,pr):
     new.p33 = pl.p33 + pr.p33 - 2*pl.p23*(pr.p11*pl.p23 + pr.p13)/D - 2*pr.p13*(pl.p22*pr.p13 + pl.p23)/D
     return new
 
+
+def a1_finder(v, lam, ksquared, c_s, w):
+    '''
+    Takes in SAW velocity (in m/s), SAW wavelength (in m), ksquared
+    IDT capacitance per unit length (in pF/cm) and IDT overlap (in m)
+    Spits out an approximation for the piezoelectric conversion constant a1.
+    '''
+    
+    c_s = c_s/1E10 # Convert C_s to F/m
+    omega = 2*np.pi*v/lam
+    n_p = np.linspace(10,100,91) # create an array for n_p and minimize over array
+    if type(w) != np.ndarray:
+        w = np.array([w])
+    a1 = np.zeros(len(w))
+    
+    for i in range(len(w)):
+        # Define the cost function
+        G_alg = 1.3*ksquared*n_p**2*omega*w[i]*c_s
+        def f(x):
+            return np.sum((G_alg - p33(0,x,lam*n_p,1,lam).real)**2)
+        # Minimize the cost function
+        a1[i] = float(op.minimize(f, 500, method = 'Powell').x)
+    return 1j*a1
 
 
